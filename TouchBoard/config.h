@@ -54,3 +54,32 @@
 #define PIN_LED_R     4
 #define PIN_LED_G     16
 #define PIN_LED_B     17
+
+// ---------- Speaker (metronome click / key feedback) ----------
+// The 2432S024 routes a small buzzer/amp to GPIO 26. tone() drives it.
+#define PIN_SPEAKER   26
+
+// ---------- SD card (VSPI, separate bus from the LCD's HSPI) ----------
+// Standard CYD wiring. If SD_MOUNTED stays false at boot, re-check these
+// against your board — some CYD revisions move CS. No LCD pin overlap.
+#define PIN_SD_SCK    18
+#define PIN_SD_MISO   19
+#define PIN_SD_MOSI   23
+#define PIN_SD_CS      5
+#define SD_DIR_SONGS  "/midi"   // .mid files live here
+
+// ---------- MIDI ----------
+#define MIDI_BLE_NAME       "TouchBoard MIDI"   // shown in macOS Audio MIDI Setup > Bluetooth
+#define MIDI_SERIAL_BAUD    115200              // Hairless / bridge script baud on UART0
+#define MIDI_DEFAULT_CH     0                   // 0-based channel (ch 1)
+#define MIDI_DEFAULT_VEL    100                 // velocity when not slider-driven
+#define MIDI_DEFAULT_OCTAVE 4                   // middle-C octave shown first
+#define MIDI_DEFAULT_BPM    120
+#define MIDI_MAX_EVENTS     4000                // song buffer; ~32KB of RAM
+#define MIDI_SMF_PPQ        480                 // ticks per quarter note in saved files
+
+// NVS hand-off: Marauder (or TouchBoard itself) can request that the board
+// boot straight into the MIDI view. Namespace is kept distinct from the
+// Marauder bond namespace (mrdr_bond) so nothing collides.
+#define NVS_TB_NAMESPACE    "touchboard"
+#define NVS_KEY_BOOTVIEW    "bootview"          // value 1 == open MIDI on boot

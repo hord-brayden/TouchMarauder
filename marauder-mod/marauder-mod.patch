@@ -12,19 +12,20 @@ index f960bd5..522581f 100644
    
    Serial.print("> ");
 diff --git a/esp32_marauder/MenuFunctions.cpp b/esp32_marauder/MenuFunctions.cpp
-index 835788f..30cfa5c 100644
+index 835788f..300da6f 100644
 --- a/esp32_marauder/MenuFunctions.cpp
 +++ b/esp32_marauder/MenuFunctions.cpp
-@@ -3,6 +3,8 @@
+@@ -3,6 +3,9 @@
  //#include "icons.h"
  #include "configs.h"
  #include "TouchDrvGT911.hpp"
 +#include "esp_ota_ops.h"      // TouchBoard mod: jump to the TouchBoard app slot
 +#include "esp_partition.h"
++#include <Preferences.h>      // TouchBoard mod: NVS hand-off flag for the MIDI view
  
  TouchDrvGT911 touch;
  
-@@ -1797,6 +1799,13 @@ void MenuFunctions::RunSetup()
+@@ -1797,6 +1800,23 @@ void MenuFunctions::RunSetup()
    this->addNodes(&mainMenu, text_table1[9], TFTBLUE, NULL, DEVICE, [this]() {
      this->changeMenu(&deviceMenu);
    });
@@ -33,6 +34,16 @@ index 835788f..30cfa5c 100644
 +    const esp_partition_t* p = esp_partition_find_first(
 +        ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_1, NULL);
 +    if (p) esp_ota_set_boot_partition(p);
++    ESP.restart();
++  });
++  this->addNodes(&mainMenu, "MIDI", TFTMAGENTA, NULL, DEVICE, []() {
++    // TouchBoard mod: leave a one-shot flag so TouchBoard opens on its MIDI
++    // view, then boot it (ota_1). The NVS partition is shared across both apps.
++    Preferences p;
++    if (p.begin("touchboard", false)) { p.putUChar("bootview", 1); p.end(); }
++    const esp_partition_t* pt = esp_partition_find_first(
++        ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_1, NULL);
++    if (pt) esp_ota_set_boot_partition(pt);
 +    ESP.restart();
 +  });
    this->addNodes(&mainMenu, text_table1[30], TFTLIGHTGREY, NULL, REBOOT, []() {

@@ -11,10 +11,57 @@ real hardware keyboard. Five views, switched by the tab bar at the top:
 | `nav` | Arrows, Home/End/PgUp/PgDn, Esc, Tab, Del, Copy/Cut/Paste |
 | `QWE` | Full **landscape** QWERTY for when you actually have a sentence to type |
 | `BT`  | Connection status, paired-host count, re-advertise / forget / **Exit to Marauder** |
+| `MIDI`| A full MIDI controller (keys, pads, CC faders, sequencer, SD songs) — see below |
 
 Ships as the second half of [TouchMarauder](../README.md): the same CYD dual-boots
 this keyboard and a customized ESP32 Marauder, and each hands off to the other
 with a tap. The **Exit to Marauder** button on the `BT` tab is that hand-off.
+
+## MIDI controller (the `MIDI` tab)
+
+A near-complete MIDI controller runs natively in TouchBoard. Tap the `MIDI` tab
+(or, from Marauder, the **MIDI** main-menu tile, which boots straight into it).
+Six sub-sections along the top:
+
+| Section | What it does |
+|---------|--------------|
+| `KEYS`  | One-octave piano, octave −/+, velocity slider. Slide to glissando. |
+| `PADS`  | 4×4 MPC-style drum pads (GM drums on channel 10). |
+| `CC`    | Faders for Mod / Volume / Pan / Cutoff, a sustain toggle, and a pitch-bend strip (springs back to center on release). |
+| `REC`   | Transport: record / play / stop, loop, metronome, BPM, clear, and **Save take** to SD. |
+| `SONG`  | Browse `.mid` files on the SD card: load, delete, refresh. |
+| `SET`   | MIDI channel, base octave, velocity, transport toggles (BLE / USB), and **Panic** (all-notes-off). |
+
+### Two ways to reach a computer (this board has **no native USB MIDI**)
+
+The classic ESP32 has no USB device peripheral — the USB port is a CH340 serial
+bridge for flashing — so class-compliant USB MIDI is physically impossible here.
+Instead:
+
+- **BLE-MIDI (wireless).** On macOS: *Audio MIDI Setup → window “MIDI Studio” →
+  Bluetooth → connect **TouchBoard MIDI***. Works with Logic, Ableton,
+  GarageBand, any DAW. This is the default; toggle it in `SET`.
+- **USB-serial (wired, lowest latency).** Enable **USB: ON** in `SET`, then on
+  the Mac run [`tools/midi_serial_bridge.py`](tools/midi_serial_bridge.py)
+  (`pip install pyserial python-rtmidi`), which exposes a virtual MIDI port
+  named *TouchBoard USB*. Enabling USB also mutes the firmware’s serial debug
+  log so it can’t corrupt the MIDI byte stream (they share UART0).
+
+Both can be on at once.
+
+### What the hardware can and can’t do
+
+- **Monophonic keys.** The capacitive panel is single-touch, so you can’t hold a
+  chord on the piano. Build chords by **overdub**: record a part on `REC`, then
+  hit record again and play more on top — the first take plays back underneath.
+- **No key-pressure velocity.** Velocity comes from the `KEYS` velocity slider
+  (or the `SET` default), not from how hard you press.
+- **Songs are Standard MIDI Files** (format 0) on the SD card under `/midi`.
+  Saved takes are `take-001.mid`, `take-002.mid`, … . Loading a DAW-exported
+  `.mid` works too. “Remix” lives on the sequencer: transpose, quantize, and a
+  tempo control that actually re-times the take.
+
+Marauder is never affected — MIDI lives entirely in the TouchBoard app slot.
 
 ## T9 typing (traditional buffered multi-tap)
 

@@ -20,6 +20,7 @@
 #include "display.h"
 #include "hidkb.h"
 #include "keymap.h"
+#include "midi_ui.h"         // MIDI controller mode (VIEW_MIDI)
 #include "esp_ota_ops.h"     // dual-boot: hand off to the Marauder app slot
 #include "esp_partition.h"
 
@@ -80,7 +81,12 @@ static ActiveKey down = { nullptr, 0, 0, 0, 0, -1, false };
 static bool lastConn  = false;
 static int  lastBonds = -1;
 
-static const char* TAB_LABELS[VIEW_COUNT] = { "T9", "123", "nav", "QWE", "BT" };
+static const char* TAB_LABELS[VIEW_COUNT] = { "T9", "123", "nav", "QWE", "BT", "MIDI" };
+
+// True while a finger that landed in the MIDI content area is still down, so
+// move/up events route to the MIDI module rather than the keyboard grids.
+static bool midiTouchActive = false;
+static bool s_bootMidi = false;
 
 // BT screen buttons (stacked, portrait)
 static const KeyDef BT_BTN_ADV   = { "Re-advertise",     0, 0, ACT_BT_ADV,        1 };
@@ -536,6 +542,8 @@ static void drawView() {
   if (curView == VIEW_QWERTY) { tft.setRotation(1); drawQwerty(); return; }
   tft.setRotation(2);          // every other screen is portrait
   drawTabs();
+  // MIDI mode owns everything below the tab bar (no preview strip).
+  if (curView == VIEW_MIDI) { midiui_draw(); return; }
   drawStrip();
   if (curView == VIEW_KB) { drawT9View(); return; }
   if (curView == VIEW_BT) { drawBTView(); return; }
@@ -561,6 +569,11 @@ void ui_onTouchDown(int tx, int ty) {
     if (t < VIEW_COUNT) { down.tab = t; down.valid = true; }
     return;
   }
+
+  // MIDI mode owns the whole area below the tab bar (its own sub-tabs +
+  // sections). Checked before the strip guard because MIDI has no strip.
+  if (curView == VIEW_MIDI) { midiTouchActive = true; midiui_touchDown(tx, ty); return; }
+
   if (ty < AREA_Y) return;  // strip is display-only
 
   if (curView == VIEW_KB) { t9TouchDown(tx, ty); return; }
@@ -597,6 +610,7 @@ void ui_onTouchDown(int tx, int ty) {
 }
 
 void ui_onTouchUp() {
+  if (midiTouchActive) { midiui_touchUp(); midiTouchActive = false; return; }
   if (curView == VIEW_QWERTY) { qwertyTouchUp(); return; }
   if (curView == VIEW_KB && !down.valid) { t9TouchUp(); return; }
   if (!down.valid) return;
@@ -607,8 +621,11 @@ void ui_onTouchUp() {
   if (k.tab >= 0) {
     if ((ViewId)k.tab != curView) {
       t9Commit();
+      ViewId prev = curView;
       curView = (ViewId)k.tab;
+      if (prev == VIEW_MIDI) midiui_exit();   // hand BLE radio back to HID keyboard
       drawView();
+      if (curView == VIEW_MIDI) midiui_enter();  // advertise as MIDI device
     }
     return;
   }
@@ -629,7 +646,13 @@ void ui_onTouchUp() {
   }
 }
 
+void ui_onTouchMove(int x, int y) {
+  if (midiTouchActive) midiui_touchMove(x, y);
+}
+
 void ui_tick(uint32_t now) {
+  if (curView == VIEW_MIDI) midiui_tick(now);   // live transport progress/meters
+
   // T9: multi-tap window expired -> commit the candidate.
   // (Long-press-for-digit was removed: this panel holds "finger down" well
   // past the threshold after a physical lift, so it fired on normal taps and
@@ -646,12 +669,16 @@ void ui_tick(uint32_t now) {
   if (conn != lastConn || bonds != lastBonds) {
     lastConn = conn;
     lastBonds = bonds;
-    if (curView != VIEW_QWERTY) drawStrip();   // strip is portrait-only
+    if (curView != VIEW_QWERTY && curView != VIEW_MIDI) drawStrip();  // portrait-only, and MIDI has no strip
     if (curView == VIEW_BT) drawBTView();
   }
 }
 
+void ui_bootIntoMidi() { s_bootMidi = true; }
+
 void ui_begin() {
   tft.fillScreen(COL_BG);
+  if (s_bootMidi) curView = VIEW_MIDI;
   drawView();
+  if (curView == VIEW_MIDI) midiui_enter();
 }

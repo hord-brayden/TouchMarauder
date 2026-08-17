@@ -10,12 +10,16 @@ One **Cheap Yellow Display** (ESP32-2432S024C, 2.4" capacitive) runs:
   capture, BLE analyzer, the whole "look how cool an ESP32 is" party trick.
 - **TouchBoard** — a full touchscreen Bluetooth keyboard I built from scratch.
   Pairs with your phone/laptop/TV as a real HID keyboard: T9, a numpad, arrow
-  keys, and a landscape QWERTY.
+  keys, and a landscape QWERTY. It also has a full **MIDI controller** mode —
+  keys, drum pads, CC faders, an on-board sequencer, and SD-card song
+  record/save/load — over BLE-MIDI or a wired USB-serial bridge. See
+  [`TouchBoard/HOW_TO_PLAY.md`](TouchBoard/HOW_TO_PLAY.md).
 
-Both are wedged into the ESP32's two OTA app slots. Marauder gets a **TouchBoard**
-tile in its main menu; TouchBoard gets an **Exit to Marauder** button on its BT
-tab. Tap one, the board reboots into the other in about a second. That's the
-whole trick — two apps, one flash chip, a friendly bootloader shove between them.
+Both are wedged into the ESP32's two OTA app slots. Marauder gets **TouchBoard**
+and **MIDI** tiles in its main menu (the MIDI tile drops you straight into the
+controller); TouchBoard gets an **Exit to Marauder** button on its BT tab. Tap
+one, the board reboots into the other in about a second. That's the whole trick —
+two apps, one flash chip, a friendly bootloader shove between them.
 
 ## How the switch works
 

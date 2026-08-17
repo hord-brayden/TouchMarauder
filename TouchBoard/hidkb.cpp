@@ -8,6 +8,7 @@
 //
 #include "hidkb.h"
 #include "config.h"
+#include "midi_core.h"    // midi_serialEnabled(): mute logs when USB-MIDI owns UART0
 #include <NimBLEDevice.h>
 #include <NimBLEHIDDevice.h>
 
@@ -66,16 +67,17 @@ class ServerCallbacks : public NimBLEServerCallbacks {
     g_connected  = true;
     g_connHandle = connInfo.getConnHandle();
     g_peerAddr   = connInfo.getAddress().toString().c_str();
-    Serial.printf("[ble] connected: %s\n", g_peerAddr.c_str());
+    if (!midi_serialEnabled()) Serial.printf("[ble] connected: %s\n", g_peerAddr.c_str());
   }
   void onDisconnect(NimBLEServer* server, NimBLEConnInfo& connInfo, int reason) override {
     g_connected = false;
-    Serial.printf("[ble] disconnected (reason %d), advertising again\n", reason);
+    if (!midi_serialEnabled()) Serial.printf("[ble] disconnected (reason %d), advertising again\n", reason);
     // advertiseOnDisconnect(true) restarts advertising for us
   }
   void onAuthenticationComplete(NimBLEConnInfo& connInfo) override {
-    Serial.printf("[ble] auth complete, encrypted=%d bonded=%d\n",
-                  connInfo.isEncrypted(), connInfo.isBonded());
+    if (!midi_serialEnabled())
+      Serial.printf("[ble] auth complete, encrypted=%d bonded=%d\n",
+                    connInfo.isEncrypted(), connInfo.isBonded());
   }
 };
 
@@ -107,14 +109,30 @@ bool hidkb_begin() {
   g_hid->startServices();
   g_hid->setBatteryLevel(100);
 
+  // NOTE: advertising is deliberately NOT started here. The FIRST call to
+  // NimBLEAdvertising::start() is what starts the GATT server and registers
+  // every service, so midi_ble_begin() must create the MIDI service before
+  // that happens. setup() calls hidkb_advertiseHID() after midi_ble_begin().
+  return true;
+}
+
+NimBLEServer* hidkb_server() { return g_server; }
+
+// Build a HID-keyboard advertising payload and start it. clearData() wipes any
+// prior payload (e.g. the MIDI service UUID) so switching modes leaves nothing
+// stale. The 16-bit HID UUID + appearance + short name all fit the 31-byte
+// primary packet, so no scan response is needed here.
+void hidkb_advertiseHID() {
+  if (!g_hid) return;
   NimBLEAdvertising* adv = NimBLEDevice::getAdvertising();
+  adv->stop();
+  adv->clearData();
+  adv->enableScanResponse(false);
   adv->setAppearance(961);  // 0x03C1 = HID Keyboard; hosts show a keyboard icon
   adv->addServiceUUID(g_hid->getHidService()->getUUID());
   adv->setName(BLE_DEVICE_NAME);
   adv->start();
-
-  Serial.printf("[ble] advertising as '%s'\n", BLE_DEVICE_NAME);
-  return true;
+  Serial.printf("[ble] advertising as HID '%s'\n", BLE_DEVICE_NAME);
 }
 
 bool   hidkb_connected()   { return g_connected; }

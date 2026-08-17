@@ -1,0 +1,13 @@
+diff --git a/libraries/NimBLE-Arduino/src/nimble/host/store/config/src/ble_store_nvs.c b/libraries/NimBLE-Arduino/src/nimble/host/store/config/src/ble_store_nvs.c
+index 49ca6ed..5a5e6a7 100644
+--- a/libraries/NimBLE-Arduino/src/nimble/host/store/config/src/ble_store_nvs.c
++++ b/libraries/NimBLE-Arduino/src/nimble/host/store/config/src/ble_store_nvs.c
+@@ -40,7 +40,7 @@
+ #define NIMBLE_NVS_OUR_SEC_KEY                   "our_sec"
+ #define NIMBLE_NVS_CCCD_SEC_KEY                  "cccd_sec"
+ #define NIMBLE_NVS_PEER_RECORDS_KEY              "p_dev_rec"
+-#define NIMBLE_NVS_NAMESPACE                     "nimble_bond"
++#define NIMBLE_NVS_NAMESPACE                     "mrdr_bond"  // TouchBoard mod: isolate Marauder bonds from TouchBoard NimBLE 2.x (prevents boot-loop)
+ 
+ typedef uint32_t nvs_handle_t;
+ 

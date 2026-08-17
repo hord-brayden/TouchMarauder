@@ -15,10 +15,16 @@ captured as [`marauder-mod.patch`](marauder-mod.patch). Everything here is GPL-3
   parse — that's a data field, not vanity.)
 - **New main-menu tile: `TouchBoard`** — sets the boot partition to `ota_1` and
   reboots into the keyboard.
+- **New main-menu tile: `MIDI`** — same jump to `ota_1`, but first drops a
+  one-shot flag in the shared `touchboard` NVS namespace so TouchBoard opens
+  straight on its MIDI controller view.
 - **GPS off** — no GPS module on this board, and GPS init hung the boot. This is
   effectively the `nogps` build.
 - **NimBLE bond namespace** → `mrdr_bond` so Marauder and TouchBoard stop
-  clobbering each other's Bluetooth keys in NVS (that was the boot-loop).
+  clobbering each other's Bluetooth keys in NVS (that was the boot-loop). This
+  one lives in a *separate* patch, [`nimble-bond-namespace.patch`](nimble-bond-namespace.patch),
+  because it edits the bundled NimBLE library rather than the sketch — apply it
+  too or the rebuild boot-loops the moment TouchBoard has bonded a host.
 
 ## Building it (the part that fights back)
 
@@ -47,6 +53,7 @@ Roughly:
 git clone https://github.com/Fr4nkFletcher/ESP32-Marauder-Cheap-Yellow-Display
 cd ESP32-Marauder-Cheap-Yellow-Display
 git apply /path/to/marauder-mod.patch
+git apply /path/to/nimble-bond-namespace.patch   # bond-namespace fix (required)
 # point --libraries at the bundled libs (with the 2.4C TFT_eSPI as "TFT_eSPI")
 arduino-cli compile --fqbn "esp32:esp32:esp32:PartitionScheme=huge_app,FlashSize=4M,PSRAM=disabled" \
   --libraries ./build_libs \
@@ -69,7 +76,9 @@ Full blank-board procedure (both apps + partition table): see
 
 ## If it boot-loops
 
-- **Stack smash right after `Sensor type = CST820`** → NVS bond collision. Wipe
-  it: `esptool erase_region 0x9000 0x5000` then `erase_region 0xe000 0x2000`.
+- **Stack smash right after `Sensor type = CST820`** → NVS bond collision. Either
+  you skipped `nimble-bond-namespace.patch`, or there's a stale bond from an
+  older build in NVS. Wipe it: `esptool erase_region 0x9000 0x5000` then
+  `erase_region 0xe000 0x2000`.
 - **Hangs after the battery check** → GPS is on. Turn `HAS_GPS` off in `configs.h`.
 - **Wrong colors / garbage screen** → wrong TFT_eSPI variant. Use `2.4C`.
